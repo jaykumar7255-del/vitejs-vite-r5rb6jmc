@@ -1,0 +1,15 @@
+{
+    "short_name": "Invoxa",
+    "name": "Invoxa - Smart Billing & Inventory",
+    "icons": [
+      {
+        "src": "/favicon.png",
+        "type": "image/png",
+        "sizes": "512x512"
+      }
+    ],
+    "start_url": "/",
+    "background_color": "#ffffff",
+    "theme_color": "#2563eb",
+    "display": "standalone"
+  }
