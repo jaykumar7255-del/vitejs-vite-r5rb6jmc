@@ -133,10 +133,9 @@ const emptyCustomer = {
 
 const today = () => {
   const d = new Date();
-  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(
-    2,
-    '0'
-  )}-${String(d.getDate()).padStart(2, '0')}`;
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
+    d.getDate()
+  ).padStart(2, '0')}`;
 };
 
 const money = (value: number) =>
@@ -151,9 +150,17 @@ const safeNumber = (value: unknown) => Number(value || 0);
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
-  const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
+  const [authMode, setAuthMode] = useState<
+    'login' | 'signup' | 'forgot' | 'verify-otp'
+  >('login');
   const [authEmail, setAuthEmail] = useState('');
   const [authPassword, setAuthPassword] = useState('');
+  const [otpCode, setOtpCode] = useState('');
+  const [newPassword, setNewPassword] = useState('');
+  
+  // Multi-time password change state inside profile
+  const [currentPasswordInput, setCurrentPasswordInput] = useState('');
+  const [updatePasswordInput, setUpdatePasswordInput] = useState('');
 
   const [business, setBusiness] = useState<Business | null>(null);
   const [profile, setProfile] = useState({
@@ -170,25 +177,17 @@ export default function App() {
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [invoiceItems, setInvoiceItems] = useState<InvoiceItem[]>([]);
-
   const [customerForm, setCustomerForm] = useState(emptyCustomer);
-  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(
-    null
-  );
+  const [editingCustomerId, setEditingCustomerId] = useState<string | null>(null);
   const [customerSearch, setCustomerSearch] = useState('');
-
   const [productForm, setProductForm] = useState(emptyProduct);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [search, setSearch] = useState('');
-
   const [activeTab, setActiveTab] = useState<
     'dashboard' | 'products' | 'profile' | 'customers' | 'invoice' | 'history'
   >('dashboard');
-
   const [invoiceCustomer, setInvoiceCustomer] = useState('');
-  const [cart, setCart] = useState<CartLine[]>([
-    { product_id: '', quantity: '1' },
-  ]);
+  const [cart, setCart] = useState<CartLine[]>([{ product_id: '', quantity: '1' }]);
   const [invoiceSearch, setInvoiceSearch] = useState('');
   const [historyFrom, setHistoryFrom] = useState('');
   const [historyTo, setHistoryTo] = useState('');
@@ -196,7 +195,6 @@ export default function App() {
   const [selectedTheme, setSelectedTheme] = useState<
     'classic' | 'modern' | 'minimal' | 'corporate'
   >('classic');
-
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
@@ -207,14 +205,12 @@ export default function App() {
       setUser(data.session?.user ?? null);
       setAuthLoading(false);
     });
-
     const {
       data: { subscription },
     } = supabase.auth.onAuthStateChange((_event, session) => {
       setUser(session?.user ?? null);
       setAuthLoading(false);
     });
-
     return () => subscription.unsubscribe();
   }, []);
 
@@ -233,19 +229,16 @@ export default function App() {
   async function loadBusiness(userId: string) {
     setLoading(true);
     setError('');
-
     const { data, error } = await supabase
       .from('businesses')
       .select('*')
       .eq('owner_id', userId)
       .maybeSingle();
-
     if (error) {
       setError('Failed to load company profile: ' + error.message);
       setLoading(false);
       return;
     }
-
     if (data) {
       const company = data as Business;
       setBusiness(company);
@@ -258,7 +251,6 @@ export default function App() {
         logo_url: company.logo_url ?? '',
         letterhead_url: company.letterhead_url ?? '',
       });
-
       await Promise.all([
         loadProducts(company.id),
         loadCustomers(company.id),
@@ -279,7 +271,6 @@ export default function App() {
         letterhead_url: '',
       });
     }
-
     setLoading(false);
   }
 
@@ -289,12 +280,10 @@ export default function App() {
       .select('*')
       .eq('business_id', businessId)
       .order('created_at', { ascending: false });
-
     if (error) {
       setError('Failed to load products: ' + error.message);
       return;
     }
-
     setProducts((data ?? []) as Product[]);
   }
 
@@ -304,12 +293,10 @@ export default function App() {
       .select('*')
       .eq('business_id', businessId)
       .order('created_at', { ascending: false });
-
     if (error) {
       setError('Failed to load customers: ' + error.message);
       return;
     }
-
     setCustomers((data ?? []) as Customer[]);
   }
 
@@ -319,12 +306,10 @@ export default function App() {
       .select('*, customers(name, phone)')
       .eq('business_id', businessId)
       .order('sale_time', { ascending: false });
-
     if (error) {
       setError('Failed to load sales history: ' + error.message);
       return;
     }
-
     setInvoices((data ?? []) as Invoice[]);
   }
 
@@ -333,12 +318,10 @@ export default function App() {
       .from('invoice_items')
       .select('*')
       .eq('invoice_id', invoiceId);
-
     if (error) {
       setError('Failed to load invoice details: ' + error.message);
       return [];
     }
-
     return (data ?? []) as InvoiceItem[];
   }
 
@@ -349,22 +332,18 @@ export default function App() {
 
   async function saveCustomer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     if (!business) {
       setError('Please save your company profile first.');
       setActiveTab('profile');
       return;
     }
-
     if (!customerForm.name.trim()) {
       setError('Please enter the customer name.');
       return;
     }
-
     setLoading(true);
     setError('');
     setMessage('');
-
     const customerData = {
       business_id: business.id,
       name: customerForm.name.trim(),
@@ -373,7 +352,6 @@ export default function App() {
       address: customerForm.address.trim() || null,
       gstin: customerForm.gstin.trim() || null,
     };
-
     const result = editingCustomerId
       ? await supabase
           .from('customers')
@@ -383,7 +361,6 @@ export default function App() {
           .select()
           .single()
       : await supabase.from('customers').insert(customerData).select().single();
-
     if (result.error) {
       setError('Failed to save customer: ' + result.error.message);
     } else {
@@ -395,7 +372,6 @@ export default function App() {
       resetCustomerForm();
       await loadCustomers(business.id);
     }
-
     setLoading(false);
   }
 
@@ -415,17 +391,14 @@ export default function App() {
     if (!business) return;
     if (!window.confirm(`Are you sure you want to delete "${customer.name}"?`))
       return;
-
     setLoading(true);
     setError('');
     setMessage('');
-
     const { error } = await supabase
       .from('customers')
       .delete()
       .eq('id', customer.id)
       .eq('business_id', business.id);
-
     if (error) {
       setError('Failed to delete customer: ' + error.message);
     } else {
@@ -433,10 +406,10 @@ export default function App() {
       await loadCustomers(business.id);
       if (editingCustomerId === customer.id) resetCustomerForm();
     }
-
     setLoading(false);
   }
 
+  // Auth & OTP Handlers
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
@@ -448,34 +421,93 @@ export default function App() {
         email: authEmail,
         password: authPassword,
       });
-
       if (error) {
         setError('Sign-up failed: ' + error.message);
       } else {
-        setMessage(
-          'Sign-up request submitted. If email confirmation is enabled, check your inbox. ✅'
-        );
+        setMessage('Sign-up request submitted. Check your inbox for confirmation. ✅');
       }
-    } else {
+    } else if (authMode === 'login') {
       const { error } = await supabase.auth.signInWithPassword({
         email: authEmail,
         password: authPassword,
       });
-
       if (error) setError('Login failed: ' + error.message);
+    } else if (authMode === 'forgot') {
+      // Send 6-digit OTP to email
+      const { error } = await supabase.auth.signInWithOtp({
+        email: authEmail,
+        options: {
+          shouldCreateUser: false,
+        },
+      });
+      if (error) {
+        setError('Failed to send OTP: ' + error.message);
+      } else {
+        setMessage('6-digit OTP sent to your email. Please enter it below. ✅');
+        setAuthMode('verify-otp');
+      }
+    } else if (authMode === 'verify-otp') {
+      // Verify 6-digit OTP and set new password
+      if (otpCode.length !== 6) {
+        setError('Please enter a valid 6-digit OTP.');
+        setLoading(false);
+        return;
+      }
+      const { error: verifyError } = await supabase.auth.verifyOtp({
+        email: authEmail,
+        token: otpCode,
+        type: 'email',
+      });
+      if (verifyError) {
+        setError('Invalid or expired OTP: ' + verifyError.message);
+      } else {
+        // Once verified, update password
+        const { error: updateError } = await supabase.auth.updateUser({
+          password: newPassword,
+        });
+        if (updateError) {
+          setError('Failed to update password: ' + updateError.message);
+        } else {
+          setMessage('Password updated successfully! You are now logged in. ✅');
+          setAuthMode('login');
+          setOtpCode('');
+          setNewPassword('');
+        }
+      }
     }
+    setLoading(false);
+  }
 
+  // Multi-time password change function inside logged-in dashboard/profile
+  async function handleChangePassword(e: FormEvent<HTMLFormElement>) {
+    e.preventDefault();
+    if (!updatePasswordInput || updatePasswordInput.length < 6) {
+      setError('New password must be at least 6 characters.');
+      return;
+    }
+    setLoading(true);
+    setError('');
+    setMessage('');
+
+    const { error } = await supabase.auth.updateUser({
+      password: updatePasswordInput,
+    });
+
+    if (error) {
+      setError('Failed to change password: ' + error.message);
+    } else {
+      setMessage('Password changed successfully! ✅');
+      setUpdatePasswordInput('');
+    }
     setLoading(false);
   }
 
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) return;
-
     setLoading(true);
     setError('');
     setMessage('');
-
     const profileData = {
       owner_id: user.id,
       company_name: profile.company_name.trim(),
@@ -486,7 +518,6 @@ export default function App() {
       logo_url: profile.logo_url.trim(),
       letterhead_url: profile.letterhead_url.trim(),
     };
-
     const result = business
       ? await supabase
           .from('businesses')
@@ -495,7 +526,6 @@ export default function App() {
           .select()
           .single()
       : await supabase.from('businesses').insert(profileData).select().single();
-
     if (result.error) {
       setError('Failed to save company profile: ' + result.error.message);
     } else {
@@ -508,7 +538,6 @@ export default function App() {
         loadInvoices(saved.id),
       ]);
     }
-
     setLoading(false);
   }
 
@@ -519,23 +548,19 @@ export default function App() {
 
   async function saveProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     if (!business) {
       setError('Please save your company profile first.');
       setActiveTab('profile');
       return;
     }
-
     if (!productForm.name.trim()) {
       setError('Please enter the product name.');
       return;
     }
-
     const purchasePrice = Number(productForm.purchase_price);
     const sellingPrice = Number(productForm.selling_price);
     const gstRate = Number(productForm.gst_rate);
     const stock = Number(productForm.stock);
-
     if (
       ![purchasePrice, sellingPrice, gstRate, stock].every(Number.isFinite) ||
       purchasePrice < 0 ||
@@ -547,11 +572,9 @@ export default function App() {
       setError('Please check the price, GST rate, and stock values.');
       return;
     }
-
     setLoading(true);
     setError('');
     setMessage('');
-
     const productData = {
       business_id: business.id,
       name: productForm.name.trim(),
@@ -562,7 +585,6 @@ export default function App() {
       gst_rate: gstRate,
       stock,
     };
-
     const result = editingId
       ? await supabase
           .from('products')
@@ -572,7 +594,6 @@ export default function App() {
           .select()
           .single()
       : await supabase.from('products').insert(productData).select().single();
-
     if (result.error) {
       setError('Failed to save product: ' + result.error.message);
     } else {
@@ -584,7 +605,6 @@ export default function App() {
       resetProductForm();
       await loadProducts(business.id);
     }
-
     setLoading(false);
   }
 
@@ -606,17 +626,14 @@ export default function App() {
     if (!business) return;
     if (!window.confirm(`Are you sure you want to delete "${product.name}"?`))
       return;
-
     setLoading(true);
     setError('');
     setMessage('');
-
     const { error } = await supabase
       .from('products')
       .delete()
       .eq('id', product.id)
       .eq('business_id', business.id);
-
     if (error) {
       setError('Failed to delete product: ' + error.message);
     } else {
@@ -624,7 +641,6 @@ export default function App() {
       await loadProducts(business.id);
       if (editingId === product.id) resetProductForm();
     }
-
     setLoading(false);
   }
 
@@ -649,7 +665,6 @@ export default function App() {
   const cartTotals = useMemo(() => {
     let subtotal = 0;
     let tax = 0;
-
     const lines = cart.map((line) => {
       const product = products.find((p) => p.id === line.product_id);
       const quantity = Number(line.quantity);
@@ -658,10 +673,8 @@ export default function App() {
       const base =
         product && quantity > 0 ? Math.round(quantity * rate * 100) / 100 : 0;
       const gst = Math.round(base * gstRate) / 100;
-
       subtotal += base;
       tax += gst;
-
       return {
         ...line,
         product,
@@ -673,7 +686,6 @@ export default function App() {
         total: base + gst,
       };
     });
-
     return {
       lines,
       subtotal: Math.round(subtotal * 100) / 100,
@@ -684,18 +696,15 @@ export default function App() {
 
   async function createInvoice(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-
     if (!business) {
       setError('Please save your company profile first.');
       setActiveTab('profile');
       return;
     }
-
     if (!invoiceCustomer) {
       setError('Please select a customer.');
       return;
     }
-
     if (
       cart.some(
         (line) =>
@@ -704,12 +713,9 @@ export default function App() {
           Number(line.quantity) <= 0
       )
     ) {
-      setError(
-        'Please select a product and enter a valid quantity for every row.'
-      );
+      setError('Please select a product and enter a valid quantity for every row.');
       return;
     }
-
     const quantities = new Map<string, number>();
     for (const line of cart) {
       quantities.set(
@@ -717,7 +723,6 @@ export default function App() {
         (quantities.get(line.product_id) ?? 0) + Number(line.quantity)
       );
     }
-
     for (const [productId, quantity] of quantities) {
       const product = products.find((p) => p.id === productId);
       if (!product || quantity > Number(product.stock)) {
@@ -729,13 +734,10 @@ export default function App() {
         return;
       }
     }
-
     const invoiceNumber = `INV-${Date.now()}`;
-
     setLoading(true);
     setError('');
     setMessage('');
-
     const { data, error } = await supabase.rpc('create_sales_invoice', {
       p_business_id: business.id,
       p_customer_id: invoiceCustomer,
@@ -745,32 +747,26 @@ export default function App() {
         quantity: Number(line.quantity),
       })),
     });
-
     if (error) {
       setError('Invoice could not be saved: ' + error.message);
     } else {
-      setMessage(
-        `Invoice ${invoiceNumber} saved successfully. Stock updated. ✅`
-      );
+      setMessage(`Invoice ${invoiceNumber} saved successfully. Stock updated. ✅`);
       setInvoiceCustomer('');
       setCart([{ product_id: '', quantity: '1' }]);
       await Promise.all([loadProducts(business.id), loadInvoices(business.id)]);
       setActiveTab('history');
-
       const { data: savedInvoice, error: invoiceError } = await supabase
         .from('invoices')
         .select('*, customers(name, phone)')
         .eq('id', data)
         .eq('business_id', business.id)
         .single();
-
       if (!invoiceError && savedInvoice) {
         setSelectedInvoice(savedInvoice as Invoice);
         const items = await loadInvoiceItems(data as string);
         setInvoiceItems(items);
       }
     }
-
     setLoading(false);
   }
 
@@ -785,17 +781,13 @@ export default function App() {
     existingWindow?: Window | null
   ) {
     if (!business) return;
-
     const printWindow =
       existingWindow ?? window.open('', '_blank', 'width=900,height=700');
-
     if (!printWindow) {
       setError('Please allow pop-ups to print or save your invoice as PDF.');
       return;
     }
-
     const customer = customers.find((c) => c.id === invoice.customer_id);
-
     const itemRows = items
       .map(
         (item, index) => `
@@ -822,10 +814,8 @@ export default function App() {
       )
       .join('');
 
-    // Theme based styles & layout definition
     let themeStyles = '';
     let headerLayout = '';
-
     if (selectedTheme === 'classic') {
       themeStyles = `
         body { font-family: 'Times New Roman', Times, serif; color: #000; padding: 25px; background: #fff; }
@@ -911,15 +901,12 @@ export default function App() {
           )} | GSTIN: ${escapeHtml(business.gstin || 'N/A')}</p>
           <hr style="border: none; border-top: 1px solid #111; margin: 15px 0;" />
           <div style="display: flex; justify-content: space-between;">
-            <div><strong>Invoice:</strong> ${escapeHtml(
-              invoice.invoice_number
-            )}</div>
+            <div><strong>Invoice:</strong> ${escapeHtml(invoice.invoice_number)}</div>
             <div><strong>Date:</strong> ${invoice.invoice_date}</div>
           </div>
         </div>
       `;
     } else {
-      // Corporate Theme
       themeStyles = `
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; padding: 30px; background: #fff; }
         .invoice-box { background: #fff; border-top: 6px solid #0f172a; padding: 25px; }
@@ -951,7 +938,6 @@ export default function App() {
       `;
     }
 
-    // Letterhead background wrapper styling if uploaded
     const letterheadBg = business.letterhead_url
       ? `background-image: url('${business.letterhead_url}'); background-size: cover; background-position: center; background-repeat: no-repeat;`
       : '';
@@ -975,29 +961,17 @@ export default function App() {
         <body>
           <div class="invoice-box">
             ${headerLayout}
-
             <div style="margin-bottom: 20px; background: rgba(255,255,255,0.85); padding: 10px; border-radius: 6px;">
               <h4 style="margin: 0 0 5px 0; color: #1e293b;">Billed To:</h4>
               <p style="margin: 0; font-size: 14px;">
                 <strong>${escapeHtml(
-                  customer?.name ||
-                    invoice.customers?.name ||
-                    'Walk-in Customer'
+                  customer?.name || invoice.customers?.name || 'Walk-in Customer'
                 )}</strong><br/>
-                ${
-                  customer?.address
-                    ? `${escapeHtml(customer.address)}<br/>`
-                    : ''
-                }
-                ${
-                  customer?.phone
-                    ? `Phone: ${escapeHtml(customer.phone)}<br/>`
-                    : ''
-                }
+                ${customer?.address ? `${escapeHtml(customer.address)}<br/>` : ''}
+                ${customer?.phone ? `Phone: ${escapeHtml(customer.phone)}<br/>` : ''}
                 ${customer?.gstin ? `GSTIN: ${escapeHtml(customer.gstin)}` : ''}
               </p>
             </div>
-
             <table>
               <thead>
                 <tr>
@@ -1013,7 +987,6 @@ export default function App() {
                 ${itemRows}
               </tbody>
             </table>
-
             <div class="totals">
               <div><span>Subtotal:</span> <strong>${money(
                 safeNumber(invoice.subtotal)
@@ -1027,7 +1000,6 @@ export default function App() {
             </div>
             <div style="clear: both;"></div>
           </div>
-
           <script>
             window.onload = function() {
               setTimeout(function() {
@@ -1039,7 +1011,6 @@ export default function App() {
         </body>
       </html>
     `;
-
     printWindow.document.open();
     printWindow.document.write(invoiceHtml);
     printWindow.document.close();
@@ -1063,73 +1034,48 @@ export default function App() {
       setError('Please save your company profile first.');
       return;
     }
-
-    const allowedTypes = [
-      'image/png',
-      'image/jpeg',
-      'image/webp',
-      'image/svg+xml',
-    ];
-
+    const allowedTypes = ['image/png', 'image/jpeg', 'image/webp', 'image/svg+xml'];
     if (!allowedTypes.includes(file.type)) {
-      setError(
-        'Please upload an image file (PNG, JPG, WEBP, or SVG) from your gallery.'
-      );
+      setError('Please upload an image file (PNG, JPG, WEBP, or SVG).');
       return;
     }
-
     const maxSize = 5 * 1024 * 1024;
-
     if (file.size > maxSize) {
       setError('File size must be 5 MB or less.');
       return;
     }
-
     const extension = file.name.split('.').pop()?.toLowerCase() || 'file';
     const filePath = `${business.id}/${type}-${Date.now()}.${extension}`;
-
     const { error: uploadError } = await supabase.storage
       .from('company-assets')
       .upload(filePath, file, { upsert: true });
-
     if (uploadError) {
       setError('Upload failed: ' + uploadError.message);
       return;
     }
-
-    const { data } = supabase.storage
-      .from('company-assets')
-      .getPublicUrl(filePath);
-
+    const { data } = supabase.storage.from('company-assets').getPublicUrl(filePath);
     const url = data.publicUrl;
-
     const { error: updateError } = await supabase
       .from('businesses')
       .update(type === 'logo' ? { logo_url: url } : { letterhead_url: url })
       .eq('id', business.id);
-
     if (updateError) {
-      setError(
-        'File uploaded, but profile update failed: ' + updateError.message
-      );
+      setError('File uploaded, but profile update failed: ' + updateError.message);
       return;
     }
-
     setBusiness({
       ...business,
       ...(type === 'logo' ? { logo_url: url } : { letterhead_url: url }),
     });
-
     setMessage(
       type === 'logo'
-        ? 'Company logo uploaded successfully from gallery! ✅'
-        : 'Letterhead image uploaded successfully from gallery! ✅'
+        ? 'Company logo uploaded successfully! ✅'
+        : 'Letterhead image uploaded successfully! ✅'
     );
   }
 
   async function logout() {
     const { error } = await supabase.auth.signOut();
-
     if (error) {
       setError('Logout failed: ' + error.message);
     } else {
@@ -1175,7 +1121,6 @@ export default function App() {
     (total, product) => total + safeNumber(product.stock),
     0
   );
-
   const stockValue = products.reduce(
     (total, product) =>
       total + safeNumber(product.stock) * safeNumber(product.purchase_price),
@@ -1183,9 +1128,7 @@ export default function App() {
   );
 
   if (authLoading) {
-    return (
-      <div style={{ padding: 40, textAlign: 'center' }}>Loading Invoxa...</div>
-    );
+    return <div style={{ padding: 40, textAlign: 'center' }}>Loading Invoxa...</div>;
   }
 
   if (!user) {
@@ -1214,57 +1157,153 @@ export default function App() {
         >
           <h1 style={{ marginTop: 0, color: '#1d4ed8' }}>Invoxa</h1>
           <p style={{ color: '#6b7280' }}>Billing & Inventory Management</p>
-          <h2>{authMode === 'login' ? 'Login' : 'Create Account'}</h2>
-          <label style={labelStyle}>Email Address</label>
-          <input
-            style={{ ...inputStyle, marginBottom: 16 }}
-            type="email"
-            required
-            value={authEmail}
-            onChange={(e) => setAuthEmail(e.target.value)}
-            placeholder="you@example.com"
-          />
-          <label style={labelStyle}>Password</label>
-          <input
-            style={{ ...inputStyle, marginBottom: 18 }}
-            type="password"
-            required
-            minLength={6}
-            value={authPassword}
-            onChange={(e) => setAuthPassword(e.target.value)}
-            placeholder="At least 6 characters"
-          />
-          {error && <p style={{ color: '#dc2626' }}>{error}</p>}
-          {message && <p style={{ color: '#15803d' }}>{message}</p>}
+          
+          <h2>
+            {authMode === 'login' && 'Login'}
+            {authMode === 'signup' && 'Create Account'}
+            {authMode === 'forgot' && 'Forgot Password'}
+            {authMode === 'verify-otp' && 'Verify 6-Digit OTP'}
+          </h2>
+
+          {(authMode === 'login' || authMode === 'signup' || authMode === 'forgot') && (
+            <>
+              <label style={labelStyle}>Email Address</label>
+              <input
+                style={{ ...inputStyle, marginBottom: 16 }}
+                type="email"
+                required
+                value={authEmail}
+                onChange={(e) => setAuthEmail(e.target.value)}
+                placeholder="you@example.com"
+              />
+            </>
+          )}
+
+          {(authMode === 'login' || authMode === 'signup') && (
+            <>
+              <label style={labelStyle}>Password</label>
+              <input
+                style={{ ...inputStyle, marginBottom: 18 }}
+                type="password"
+                required
+                minLength={6}
+                value={authPassword}
+                onChange={(e) => setAuthPassword(e.target.value)}
+                placeholder="At least 6 characters"
+              />
+            </>
+          )}
+
+          {authMode === 'verify-otp' && (
+            <>
+              <p style={{ fontSize: 13, color: '#4b5563', marginBottom: 12 }}>
+                Enter the 6-digit OTP sent to <strong>{authEmail}</strong> and set your new password.
+              </p>
+              <label style={labelStyle}>6-Digit OTP</label>
+              <input
+                style={{ ...inputStyle, marginBottom: 16, letterSpacing: '4px', textAlign: 'center', fontSize: 18 }}
+                type="text"
+                maxLength={6}
+                required
+                value={otpCode}
+                onChange={(e) => setOtpCode(e.target.value)}
+                placeholder="123456"
+              />
+              <label style={labelStyle}>New Password</label>
+              <input
+                style={{ ...inputStyle, marginBottom: 18 }}
+                type="password"
+                required
+                minLength={6}
+                value={newPassword}
+                onChange={(e) => setNewPassword(e.target.value)}
+                placeholder="At least 6 characters"
+              />
+            </>
+          )}
+
+          {error && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 10 }}>{error}</p>}
+          {message && <p style={{ color: '#15803d', fontSize: 13, marginBottom: 10 }}>{message}</p>}
+
           <button style={{ ...buttonStyle, width: '100%' }} disabled={loading}>
             {loading
               ? 'Please wait...'
               : authMode === 'login'
               ? 'Login'
-              : 'Sign Up'}
+              : authMode === 'signup'
+              ? 'Sign Up'
+              : authMode === 'forgot'
+              ? 'Send 6-Digit OTP'
+              : 'Verify & Reset Password'}
           </button>
-          <p style={{ textAlign: 'center', fontSize: 14 }}>
-            {authMode === 'login'
-              ? "Don't have an account? "
-              : 'Already have an account? '}
-            <button
-              type="button"
-              onClick={() => {
-                setAuthMode(authMode === 'login' ? 'signup' : 'login');
-                setError('');
-                setMessage('');
-              }}
-              style={{
-                border: 'none',
-                background: 'none',
-                color: '#2563eb',
-                cursor: 'pointer',
-                fontWeight: 600,
-              }}
-            >
-              {authMode === 'login' ? 'Sign Up' : 'Login'}
-            </button>
-          </p>
+
+          <div style={{ marginTop: 16, textAlign: 'center', fontSize: 14 }}>
+            {authMode === 'login' && (
+              <>
+                <p>
+                  Don't have an account?{' '}
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('signup');
+                      setError('');
+                      setMessage('');
+                    }}
+                    style={{ border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', fontWeight: 600 }}
+                  >
+                    Sign Up
+                  </button>
+                </p>
+                <p style={{ marginTop: 6 }}>
+                  <button
+                    type="button"
+                    onClick={() => {
+                      setAuthMode('forgot');
+                      setError('');
+                      setMessage('');
+                    }}
+                    style={{ border: 'none', background: 'none', color: '#4b5563', cursor: 'pointer', textDecoration: 'underline' }}
+                  >
+                    Forgot Password? (Email OTP)
+                  </button>
+                </p>
+              </>
+            )}
+
+            {authMode === 'signup' && (
+              <p>
+                Already have an account?{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setError('');
+                    setMessage('');
+                  }}
+                  style={{ border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Login
+                </button>
+              </p>
+            )}
+
+            {(authMode === 'forgot' || authMode === 'verify-otp') && (
+              <p>
+                Back to{' '}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setAuthMode('login');
+                    setError('');
+                    setMessage('');
+                  }}
+                  style={{ border: 'none', background: 'none', color: '#2563eb', cursor: 'pointer', fontWeight: 600 }}
+                >
+                  Login
+                </button>
+              </p>
+            )}
+          </div>
         </form>
       </main>
     );
@@ -1273,7 +1312,7 @@ export default function App() {
   const tabs = [
     ['dashboard', 'Dashboard'],
     ['products', 'Products & Inventory'],
-    ['profile', 'Company Profile'],
+    ['profile', 'Company Profile & Password'],
     ['customers', 'Customers'],
     ['invoice', 'Sales Invoice'],
     ['history', 'Sales History'],
@@ -1324,10 +1363,7 @@ export default function App() {
               {label}
             </button>
           ))}
-          <button
-            style={{ ...buttonStyle, background: '#374151' }}
-            onClick={logout}
-          >
+          <button style={{ ...buttonStyle, background: '#374151' }} onClick={logout}>
             Logout
           </button>
         </div>
@@ -1337,7 +1373,6 @@ export default function App() {
         {activeTab === 'dashboard' && (
           <section>
             <h2>Dashboard</h2>
-
             <div
               style={{
                 display: 'grid',
@@ -1346,31 +1381,16 @@ export default function App() {
               }}
             >
               {[
-                {
-                  title: 'Total Products',
-                  value: String(products.length),
-                },
-                {
-                  title: 'Total Customers',
-                  value: String(customers.length),
-                },
-                {
-                  title: 'Total Invoices',
-                  value: String(invoices.length),
-                },
+                { title: 'Total Products', value: String(products.length) },
+                { title: 'Total Customers', value: String(customers.length) },
+                { title: 'Total Invoices', value: String(invoices.length) },
                 {
                   title: 'Total Sales',
                   value: money(
-                    invoices.reduce(
-                      (sum, invoice) => sum + safeNumber(invoice.total),
-                      0
-                    )
+                    invoices.reduce((sum, invoice) => sum + safeNumber(invoice.total), 0)
                   ),
                 },
-                {
-                  title: 'Stock Units',
-                  value: String(totalStock),
-                },
+                { title: 'Stock Units', value: String(totalStock) },
                 {
                   title: 'Low Stock Products',
                   value: String(
@@ -1379,9 +1399,7 @@ export default function App() {
                 },
               ].map((item) => (
                 <div key={item.title} style={panelStyle}>
-                  <div style={{ color: '#6b7280', fontSize: 13 }}>
-                    {item.title}
-                  </div>
+                  <div style={{ color: '#6b7280', fontSize: 13 }}>{item.title}</div>
                   <div style={{ fontSize: 24, fontWeight: 700, marginTop: 8 }}>
                     {item.value}
                   </div>
@@ -1391,18 +1409,11 @@ export default function App() {
 
             <section style={panelStyle}>
               <h3>Recent Sales</h3>
-
               {invoices.length === 0 ? (
                 <p>No sales recorded yet.</p>
               ) : (
                 <div style={{ overflowX: 'auto' }}>
-                  <table
-                    style={{
-                      width: '100%',
-                      borderCollapse: 'collapse',
-                      fontSize: 13,
-                    }}
-                  >
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: '#f3f4f6' }}>
                         <th style={cellStyle}>Invoice No.</th>
@@ -1419,9 +1430,7 @@ export default function App() {
                           <td style={cellStyle}>
                             {invoice.customers?.name || 'Customer'}
                           </td>
-                          <td style={cellStyle}>
-                            {money(safeNumber(invoice.total))}
-                          </td>
+                          <td style={cellStyle}>{money(safeNumber(invoice.total))}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -1439,174 +1448,149 @@ export default function App() {
         )}
 
         {activeTab === 'profile' && (
-          <section style={panelStyle}>
-            <h2 style={{ marginTop: 0 }}>Company Profile & Gallery Assets</h2>
-            {error && <p style={{ color: '#dc2626' }}>{error}</p>}
-            {message && <p style={{ color: '#15803d' }}>{message}</p>}
-
-            <form onSubmit={saveProfile}>
-              <div
-                style={{
-                  display: 'grid',
-                  gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
-                  gap: 16,
-                }}
-              >
-                <div>
-                  <label style={labelStyle}>Company Name *</label>
-                  <input
-                    style={inputStyle}
-                    required
-                    value={profile.company_name}
-                    onChange={(e) =>
-                      setProfile({ ...profile, company_name: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>GSTIN</label>
-                  <input
-                    style={inputStyle}
-                    value={profile.gstin}
-                    onChange={(e) =>
-                      setProfile({ ...profile, gstin: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Phone Number</label>
-                  <input
-                    style={inputStyle}
-                    value={profile.phone}
-                    onChange={(e) =>
-                      setProfile({ ...profile, phone: e.target.value })
-                    }
-                  />
-                </div>
-                <div>
-                  <label style={labelStyle}>Company Email</label>
-                  <input
-                    style={inputStyle}
-                    type="email"
-                    value={profile.email}
-                    onChange={(e) =>
-                      setProfile({ ...profile, email: e.target.value })
-                    }
-                  />
-                </div>
-                <div style={{ gridColumn: '1 / -1' }}>
-                  <label style={labelStyle}>Address</label>
-                  <textarea
-                    style={{ ...inputStyle, minHeight: 80 }}
-                    value={profile.address}
-                    onChange={(e) =>
-                      setProfile({ ...profile, address: e.target.value })
-                    }
-                  />
-                </div>
-              </div>
-              <button
-                style={{ ...buttonStyle, marginTop: 20 }}
-                disabled={loading}
-              >
-                Save Company Profile
-              </button>
-            </form>
-
-            {business && (
-              <div
-                style={{
-                  marginTop: 30,
-                  borderTop: '1px solid #e5e7eb',
-                  paddingTop: 20,
-                }}
-              >
-                <h3>Upload Logo & Letterhead from Gallery</h3>
+          <div>
+            <section style={panelStyle}>
+              <h2 style={{ marginTop: 0 }}>Company Profile & Gallery Assets</h2>
+              {error && <p style={{ color: '#dc2626' }}>{error}</p>}
+              {message && <p style={{ color: '#15803d' }}>{message}</p>}
+              <form onSubmit={saveProfile}>
                 <div
                   style={{
                     display: 'grid',
-                    gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
-                    gap: 20,
-                    marginTop: 15,
+                    gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
+                    gap: 16,
                   }}
                 >
-                  <div
-                    style={{
-                      background: '#f8fafc',
-                      padding: 15,
-                      borderRadius: 8,
-                      border: '1px solid #e2e8f0',
-                    }}
-                  >
-                    <label style={labelStyle}>Company Logo</label>
-                    {business.logo_url && (
-                      <img
-                        src={business.logo_url}
-                        alt="Logo"
-                        style={{
-                          maxHeight: 50,
-                          marginBottom: 10,
-                          display: 'block',
-                        }}
-                      />
-                    )}
+                  <div>
+                    <label style={labelStyle}>Company Name *</label>
                     <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void uploadCompanyFile(file, 'logo');
-                      }}
-                      style={{ fontSize: 13 }}
+                      style={inputStyle}
+                      required
+                      value={profile.company_name}
+                      onChange={(e) =>
+                        setProfile({ ...profile, company_name: e.target.value })
+                      }
                     />
                   </div>
-
-                  <div
-                    style={{
-                      background: '#f8fafc',
-                      padding: 15,
-                      borderRadius: 8,
-                      border: '1px solid #e2e8f0',
-                    }}
-                  >
-                    <label style={labelStyle}>
-                      Letterhead Background (From Gallery)
-                    </label>
-                    {business.letterhead_url && (
-                      <p
-                        style={{
-                          color: '#059669',
-                          fontSize: 12,
-                          marginBottom: 5,
-                        }}
-                      >
-                        Letterhead uploaded successfully! ✅
-                      </p>
-                    )}
+                  <div>
+                    <label style={labelStyle}>GSTIN</label>
                     <input
-                      type="file"
-                      accept="image/*"
-                      onChange={(e) => {
-                        const file = e.target.files?.[0];
-                        if (file) void uploadCompanyFile(file, 'letterhead');
-                      }}
-                      style={{ fontSize: 13 }}
+                      style={inputStyle}
+                      value={profile.gstin}
+                      onChange={(e) =>
+                        setProfile({ ...profile, gstin: e.target.value })
+                      }
                     />
-                    <small
-                      style={{
-                        display: 'block',
-                        color: '#6b7280',
-                        marginTop: 5,
-                      }}
-                    >
-                      Upload custom pre-printed letterhead design image from
-                      your phone/PC gallery.
-                    </small>
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Phone Number</label>
+                    <input
+                      style={inputStyle}
+                      value={profile.phone}
+                      onChange={(e) =>
+                        setProfile({ ...profile, phone: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div>
+                    <label style={labelStyle}>Company Email</label>
+                    <input
+                      style={inputStyle}
+                      type="email"
+                      value={profile.email}
+                      onChange={(e) =>
+                        setProfile({ ...profile, email: e.target.value })
+                      }
+                    />
+                  </div>
+                  <div style={{ gridColumn: '1 / -1' }}>
+                    <label style={labelStyle}>Address</label>
+                    <textarea
+                      style={{ ...inputStyle, minHeight: 80 }}
+                      value={profile.address}
+                      onChange={(e) =>
+                        setProfile({ ...profile, address: e.target.value })
+                      }
+                    />
                   </div>
                 </div>
-              </div>
-            )}
-          </section>
+                <button style={{ ...buttonStyle, marginTop: 20 }} disabled={loading}>
+                  Save Company Profile
+                </button>
+              </form>
+
+              {business && (
+                <div style={{ marginTop: 30, borderTop: '1px solid #e5e7eb', paddingTop: 20 }}>
+                  <h3>Upload Logo & Letterhead from Gallery</h3>
+                  <div
+                    style={{
+                      display: 'grid',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(280px, 1fr))',
+                      gap: 20,
+                      marginTop: 15,
+                    }}
+                  >
+                    <div style={{ background: '#f8fafc', padding: 15, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <label style={labelStyle}>Company Logo</label>
+                      {business.logo_url && (
+                        <img
+                          src={business.logo_url}
+                          alt="Logo"
+                          style={{ maxHeight: 50, marginBottom: 10, display: 'block' }}
+                        />
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void uploadCompanyFile(file, 'logo');
+                        }}
+                        style={{ fontSize: 13 }}
+                      />
+                    </div>
+                    <div style={{ background: '#f8fafc', padding: 15, borderRadius: 8, border: '1px solid #e2e8f0' }}>
+                      <label style={labelStyle}>Letterhead Background (From Gallery)</label>
+                      {business.letterhead_url && (
+                        <p style={{ color: '#059669', fontSize: 12, marginBottom: 5 }}>
+                          Letterhead uploaded successfully! ✅
+                        </p>
+                      )}
+                      <input
+                        type="file"
+                        accept="image/*"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) void uploadCompanyFile(file, 'letterhead');
+                        }}
+                        style={{ fontSize: 13 }}
+                      />
+                    </div>
+                  </div>
+                </div>
+              )}
+            </section>
+
+            {/* Multi-time password change section */}
+            <section style={panelStyle}>
+              <h2 style={{ marginTop: 0 }}>Security: Change Password Anytime</h2>
+              <form onSubmit={handleChangePassword} style={{ maxWidth: 400 }}>
+                <label style={labelStyle}>New Password (At least 6 characters)</label>
+                <input
+                  style={{ ...inputStyle, marginBottom: 16 }}
+                  type="password"
+                  required
+                  minLength={6}
+                  value={updatePasswordInput}
+                  onChange={(e) => setUpdatePasswordInput(e.target.value)}
+                  placeholder="Enter new password"
+                />
+                <button style={buttonStyle} disabled={loading}>
+                  {loading ? 'Updating...' : 'Change Password'}
+                </button>
+              </form>
+            </section>
+          </div>
         )}
 
         {activeTab === 'customers' && (
@@ -1622,8 +1606,7 @@ export default function App() {
                   <div
                     style={{
                       display: 'grid',
-                      gridTemplateColumns:
-                        'repeat(auto-fit, minmax(220px, 1fr))',
+                      gridTemplateColumns: 'repeat(auto-fit, minmax(220px, 1fr))',
                       gap: 16,
                     }}
                   >
@@ -1665,14 +1648,7 @@ export default function App() {
                       />
                     </div>
                   </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      gap: 10,
-                      marginTop: 16,
-                      flexWrap: 'wrap',
-                    }}
-                  >
+                  <div style={{ display: 'flex', gap: 10, marginTop: 16, flexWrap: 'wrap' }}>
                     <button style={buttonStyle} disabled={loading}>
                       {editingCustomerId ? 'Update Customer' : 'Add Customer'}
                     </button>
@@ -1687,9 +1663,8 @@ export default function App() {
                     )}
                   </div>
                 </form>
-                <h3 style={{ marginTop: 28 }}>
-                  Customer List ({customers.length})
-                </h3>
+
+                <h3 style={{ marginTop: 28 }}>Customer List ({customers.length})</h3>
                 <input
                   style={{ ...inputStyle, maxWidth: 420, marginBottom: 16 }}
                   placeholder="Search by name, mobile, or email..."
@@ -1697,26 +1672,11 @@ export default function App() {
                   onChange={(e) => setCustomerSearch(e.target.value)}
                 />
                 <div style={{ overflowX: 'auto' }}>
-                  <table
-                    style={{
-                      width: '100%',
-                      borderCollapse: 'collapse',
-                      fontSize: 13,
-                    }}
-                  >
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13 }}>
                     <thead>
                       <tr style={{ background: '#f3f4f6' }}>
-                        {[
-                          'Name',
-                          'Mobile',
-                          'Email',
-                          'GSTIN',
-                          'Address',
-                          'Actions',
-                        ].map((h) => (
-                          <th key={h} style={cellStyle}>
-                            {h}
-                          </th>
+                        {['Name', 'Mobile', 'Email', 'GSTIN', 'Address', 'Actions'].map((h) => (
+                          <th key={h} style={cellStyle}>{h}</th>
                         ))}
                       </tr>
                     </thead>
@@ -1731,22 +1691,14 @@ export default function App() {
                           <td style={cellStyle}>
                             <button
                               type="button"
-                              style={{
-                                ...buttonStyle,
-                                padding: '7px 9px',
-                                marginRight: 5,
-                              }}
+                              style={{ ...buttonStyle, padding: '7px 9px', marginRight: 5 }}
                               onClick={() => editCustomer(c)}
                             >
                               Edit
                             </button>
                             <button
                               type="button"
-                              style={{
-                                ...buttonStyle,
-                                padding: '7px 9px',
-                                background: '#dc2626',
-                              }}
+                              style={{ ...buttonStyle, padding: '7px 9px', background: '#dc2626' }}
                               onClick={() => deleteCustomer(c)}
                             >
                               Delete
@@ -1768,10 +1720,7 @@ export default function App() {
             {!business ? (
               <section style={panelStyle}>
                 <h2>Company Profile Required</h2>
-                <button
-                  style={buttonStyle}
-                  onClick={() => setActiveTab('profile')}
-                >
+                <button style={buttonStyle} onClick={() => setActiveTab('profile')}>
                   Open Company Profile
                 </button>
               </section>
@@ -1792,25 +1741,21 @@ export default function App() {
                     { title: 'Stock Purchase Value', value: money(stockValue) },
                   ].map((item) => (
                     <div key={item.title} style={panelStyle}>
-                      <div style={{ color: '#6b7280', fontSize: 13 }}>
-                        {item.title}
-                      </div>
-                      <div
-                        style={{ fontSize: 23, fontWeight: 700, marginTop: 8 }}
-                      >
+                      <div style={{ color: '#6b7280', fontSize: 13 }}>{item.title}</div>
+                      <div style={{ fontSize: 23, fontWeight: 700, marginTop: 8 }}>
                         {item.value}
                       </div>
                     </div>
                   ))}
                 </div>
+
                 <section style={panelStyle}>
                   <h3>{editingId ? 'Edit Product' : 'Add New Product'}</h3>
                   <form onSubmit={saveProduct}>
                     <div
                       style={{
                         display: 'grid',
-                        gridTemplateColumns:
-                          'repeat(auto-fit, minmax(190px, 1fr))',
+                        gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))',
                         gap: 16,
                       }}
                     >
@@ -1821,10 +1766,7 @@ export default function App() {
                           required
                           value={productForm.name}
                           onChange={(e) =>
-                            setProductForm({
-                              ...productForm,
-                              name: e.target.value,
-                            })
+                            setProductForm({ ...productForm, name: e.target.value })
                           }
                         />
                       </div>
@@ -1834,10 +1776,7 @@ export default function App() {
                           style={inputStyle}
                           value={productForm.sku}
                           onChange={(e) =>
-                            setProductForm({
-                              ...productForm,
-                              sku: e.target.value,
-                            })
+                            setProductForm({ ...productForm, sku: e.target.value })
                           }
                         />
                       </div>
@@ -1847,26 +1786,14 @@ export default function App() {
                           style={inputStyle}
                           value={productForm.unit}
                           onChange={(e) =>
-                            setProductForm({
-                              ...productForm,
-                              unit: e.target.value,
-                            })
+                            setProductForm({ ...productForm, unit: e.target.value })
                           }
                         >
-                          {[
-                            'PCS',
-                            'KG',
-                            'G',
-                            'Litre',
-                            'ML',
-                            'Box',
-                            'Pack',
-                            'Meter',
-                            'Dozen',
-                            'Other',
-                          ].map((unit) => (
-                            <option key={unit}>{unit}</option>
-                          ))}
+                          {['PCS', 'KG', 'G', 'Litre', 'ML', 'Box', 'Pack', 'Meter', 'Dozen', 'Other'].map(
+                            (unit) => (
+                              <option key={unit}>{unit}</option>
+                            )
+                          )}
                         </select>
                       </div>
                       <div>
@@ -1879,10 +1806,7 @@ export default function App() {
                           required
                           value={productForm.purchase_price}
                           onChange={(e) =>
-                            setProductForm({
-                              ...productForm,
-                              purchase_price: e.target.value,
-                            })
+                            setProductForm({ ...productForm, purchase_price: e.target.value })
                           }
                         />
                       </div>
@@ -1896,10 +1820,7 @@ export default function App() {
                           required
                           value={productForm.selling_price}
                           onChange={(e) =>
-                            setProductForm({
-                              ...productForm,
-                              selling_price: e.target.value,
-                            })
+                            setProductForm({ ...productForm, selling_price: e.target.value })
                           }
                         />
                       </div>
@@ -1909,19 +1830,14 @@ export default function App() {
                           style={inputStyle}
                           value={productForm.gst_rate}
                           onChange={(e) =>
-                            setProductForm({
-                              ...productForm,
-                              gst_rate: e.target.value,
-                            })
+                            setProductForm({ ...productForm, gst_rate: e.target.value })
                           }
                         >
-                          {['0', '0.1', '0.25', '3', '5', '12', '18', '28'].map(
-                            (r) => (
-                              <option key={r} value={r}>
-                                {r}%
-                              </option>
-                            )
-                          )}
+                          {['0', '0.1', '0.25', '3', '5', '12', '18', '28'].map((r) => (
+                            <option key={r} value={r}>
+                              {r}%
+                            </option>
+                          ))}
                         </select>
                       </div>
                       <div>
@@ -1934,10 +1850,7 @@ export default function App() {
                           required
                           value={productForm.stock}
                           onChange={(e) =>
-                            setProductForm({
-                              ...productForm,
-                              stock: e.target.value,
-                            })
+                            setProductForm({ ...productForm, stock: e.target.value })
                           }
                         />
                       </div>
@@ -1958,6 +1871,7 @@ export default function App() {
                     </div>
                   </form>
                 </section>
+
                 <section style={panelStyle}>
                   <h3>Product List</h3>
                   <input
@@ -1977,19 +1891,8 @@ export default function App() {
                     >
                       <thead>
                         <tr style={{ background: '#f3f4f6' }}>
-                          {[
-                            'Product',
-                            'SKU',
-                            'Unit',
-                            'Purchase',
-                            'Selling',
-                            'GST',
-                            'Stock',
-                            'Actions',
-                          ].map((h) => (
-                            <th key={h} style={cellStyle}>
-                              {h}
-                            </th>
+                          {['Product', 'SKU', 'Unit', 'Purchase', 'Selling', 'GST', 'Stock', 'Actions'].map((h) => (
+                            <th key={h} style={cellStyle}>{h}</th>
                           ))}
                         </tr>
                       </thead>
@@ -2008,22 +1911,14 @@ export default function App() {
                             <td style={cellStyle}>
                               <button
                                 type="button"
-                                style={{
-                                  ...buttonStyle,
-                                  padding: '7px 9px',
-                                  marginRight: 5,
-                                }}
+                                style={{ ...buttonStyle, padding: '7px 9px', marginRight: 5 }}
                                 onClick={() => editProduct(p)}
                               >
                                 Edit
                               </button>
                               <button
                                 type="button"
-                                style={{
-                                  ...buttonStyle,
-                                  padding: '7px 9px',
-                                  background: '#dc2626',
-                                }}
+                                style={{ ...buttonStyle, padding: '7px 9px', background: '#dc2626' }}
                                 onClick={() => deleteProduct(p)}
                               >
                                 Delete
@@ -2047,10 +1942,7 @@ export default function App() {
             {!business ? (
               <p>Please save your company profile first.</p>
             ) : products.length === 0 || customers.length === 0 ? (
-              <p>
-                Please add at least one product and one customer before creating
-                an invoice.
-              </p>
+              <p>Please add at least one product and one customer before creating an invoice.</p>
             ) : (
               <form onSubmit={createInvoice}>
                 <div
@@ -2079,20 +1971,11 @@ export default function App() {
                   </div>
                   <div>
                     <label style={labelStyle}>Invoice Date</label>
-                    <input
-                      style={inputStyle}
-                      type="date"
-                      value={today()}
-                      readOnly
-                    />
+                    <input style={inputStyle} type="date" value={today()} readOnly />
                   </div>
                   <div>
                     <label style={labelStyle}>Invoice Number</label>
-                    <input
-                      style={inputStyle}
-                      value="Auto-generated when saved"
-                      readOnly
-                    />
+                    <input style={inputStyle} value="Auto-generated when saved" readOnly />
                   </div>
                 </div>
 
@@ -2103,22 +1986,16 @@ export default function App() {
                     value={selectedTheme}
                     onChange={(e: any) => setSelectedTheme(e.target.value)}
                   >
-                    <option value="classic">
-                      Classic (Traditional Border)
-                    </option>
+                    <option value="classic">Classic (Traditional Border)</option>
                     <option value="modern">Modern (Clean Blue Theme)</option>
                     <option value="minimal">Minimal (Simple & Clean)</option>
-                    <option value="corporate">
-                      Corporate (Professional Dark)
-                    </option>
+                    <option value="corporate">Corporate (Professional Dark)</option>
                   </select>
                 </div>
 
                 <h3 style={{ marginTop: 28 }}>Products</h3>
                 {cart.map((line, index) => {
-                  const p = products.find(
-                    (product) => product.id === line.product_id
-                  );
+                  const p = products.find((product) => product.id === line.product_id);
                   const totalQty = cart
                     .filter((x) => x.product_id === line.product_id)
                     .reduce((sum, x) => sum + Number(x.quantity || 0), 0);
@@ -2140,15 +2017,12 @@ export default function App() {
                           style={inputStyle}
                           required
                           value={line.product_id}
-                          onChange={(e) =>
-                            updateCart(index, 'product_id', e.target.value)
-                          }
+                          onChange={(e) => updateCart(index, 'product_id', e.target.value)}
                         >
                           <option value="">Select product</option>
                           {products.map((product) => (
                             <option key={product.id} value={product.id}>
-                              {product.name} (Stock: {product.stock}{' '}
-                              {product.unit})
+                              {product.name} (Stock: {product.stock} {product.unit})
                             </option>
                           ))}
                         </select>
@@ -2162,36 +2036,24 @@ export default function App() {
                           step="any"
                           required
                           value={line.quantity}
-                          onChange={(e) =>
-                            updateCart(index, 'quantity', e.target.value)
-                          }
+                          onChange={(e) => updateCart(index, 'quantity', e.target.value)}
                         />
                       </div>
                       <div>
                         <label style={labelStyle}>Rate</label>
-                        <input
-                          style={inputStyle}
-                          readOnly
-                          value={p ? money(p.selling_price) : '-'}
-                        />
+                        <input style={inputStyle} readOnly value={p ? money(p.selling_price) : '-'} />
                       </div>
                       <div>
                         <label style={labelStyle}>Line Total</label>
                         <input
                           style={inputStyle}
                           readOnly
-                          value={
-                            p ? money(cartTotals.lines[index]?.total ?? 0) : '-'
-                          }
+                          value={p ? money(cartTotals.lines[index]?.total ?? 0) : '-'}
                         />
                       </div>
                       <button
                         type="button"
-                        style={{
-                          ...buttonStyle,
-                          background: '#dc2626',
-                          padding: '10px',
-                        }}
+                        style={{ ...buttonStyle, background: '#dc2626', padding: '10px' }}
                         onClick={() => removeCartLine(index)}
                       >
                         Remove
@@ -2200,18 +2062,12 @@ export default function App() {
                         <div
                           style={{
                             gridColumn: '1 / -1',
-                            color:
-                              totalQty > Number(p.stock)
-                                ? '#b91c1c'
-                                : '#6b7280',
+                            color: totalQty > Number(p.stock) ? '#b91c1c' : '#6b7280',
                             fontSize: 12,
                           }}
                         >
-                          Available stock: {p.stock} {p.unit}. GST: {p.gst_rate}
-                          %
-                          {totalQty > Number(p.stock)
-                            ? ' — quantity exceeds available stock'
-                            : ''}
+                          Available stock: {p.stock} {p.unit}. GST: {p.gst_rate}%
+                          {totalQty > Number(p.stock) ? ' — quantity exceeds available stock' : ''}
                         </div>
                       )}
                     </div>
@@ -2224,6 +2080,7 @@ export default function App() {
                 >
                   + Add Another Product
                 </button>
+
                 <div
                   style={{
                     maxWidth: 360,
@@ -2234,23 +2091,11 @@ export default function App() {
                     borderRadius: 10,
                   }}
                 >
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      marginBottom: 10,
-                    }}
-                  >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                     <span>Subtotal</span>
                     <strong>{money(cartTotals.subtotal)}</strong>
                   </div>
-                  <div
-                    style={{
-                      display: 'flex',
-                      justifyContent: 'space-between',
-                      marginBottom: 10,
-                    }}
-                  >
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 10 }}>
                     <span>Total GST</span>
                     <strong>{money(cartTotals.tax)}</strong>
                   </div>
@@ -2267,18 +2112,13 @@ export default function App() {
                     <strong>{money(cartTotals.total)}</strong>
                   </div>
                 </div>
+
                 <button
                   type="submit"
-                  style={{
-                    ...buttonStyle,
-                    marginTop: 22,
-                    padding: '12px 20px',
-                  }}
+                  style={{ ...buttonStyle, marginTop: 22, padding: '12px 20px' }}
                   disabled={loading || cartTotals.total <= 0}
                 >
-                  {loading
-                    ? 'Saving Invoice...'
-                    : 'Save Invoice & Deduct Stock'}
+                  {loading ? 'Saving Invoice...' : 'Save Invoice & Deduct Stock'}
                 </button>
               </form>
             )}
@@ -2339,18 +2179,8 @@ export default function App() {
               </select>
             </div>
 
-            <div
-              style={{
-                display: 'flex',
-                gap: 10,
-                flexWrap: 'wrap',
-                marginBottom: 18,
-              }}
-            >
-              <button
-                style={buttonStyle}
-                onClick={() => business && loadInvoices(business.id)}
-              >
+            <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
+              <button style={buttonStyle} onClick={() => business && loadInvoices(business.id)}>
                 Refresh History
               </button>
               <button
@@ -2363,37 +2193,17 @@ export default function App() {
               >
                 Clear Filters
               </button>
-              <button
-                style={{ ...buttonStyle, background: '#059669' }}
-                onClick={() => setActiveTab('invoice')}
-              >
+              <button style={{ ...buttonStyle, background: '#059669' }} onClick={() => setActiveTab('invoice')}>
                 + New Invoice
               </button>
             </div>
+
             <div style={{ overflowX: 'auto' }}>
-              <table
-                style={{
-                  width: '100%',
-                  borderCollapse: 'collapse',
-                  fontSize: 13,
-                  minWidth: 750,
-                }}
-              >
+              <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 750 }}>
                 <thead>
                   <tr style={{ background: '#f3f4f6' }}>
-                    {[
-                      'Invoice No.',
-                      'Date',
-                      'Time',
-                      'Customer',
-                      'Subtotal',
-                      'GST',
-                      'Total',
-                      'Actions',
-                    ].map((h) => (
-                      <th key={h} style={cellStyle}>
-                        {h}
-                      </th>
+                    {['Invoice No.', 'Date', 'Time', 'Customer', 'Subtotal', 'GST', 'Total', 'Actions'].map((h) => (
+                      <th key={h} style={cellStyle}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -2403,47 +2213,27 @@ export default function App() {
                       <td style={cellStyle}>{inv.invoice_number}</td>
                       <td style={cellStyle}>{inv.invoice_date}</td>
                       <td style={cellStyle}>
-                        {inv.sale_time
-                          ? new Date(inv.sale_time).toLocaleTimeString('en-IN')
-                          : '-'}
+                        {inv.sale_time ? new Date(inv.sale_time).toLocaleTimeString('en-IN') : '-'}
                       </td>
-                      <td style={cellStyle}>
-                        {inv.customers?.name || 'Customer'}
-                      </td>
-                      <td style={cellStyle}>
-                        {money(safeNumber(inv.subtotal))}
-                      </td>
-                      <td style={cellStyle}>
-                        {money(safeNumber(inv.tax_amount))}
-                      </td>
+                      <td style={cellStyle}>{inv.customers?.name || 'Customer'}</td>
+                      <td style={cellStyle}>{money(safeNumber(inv.subtotal))}</td>
+                      <td style={cellStyle}>{money(safeNumber(inv.tax_amount))}</td>
                       <td style={cellStyle}>
                         <strong>{money(safeNumber(inv.total))}</strong>
                       </td>
                       <td style={cellStyle}>
                         <button
                           type="button"
-                          style={{
-                            ...buttonStyle,
-                            padding: '7px 9px',
-                            marginRight: 5,
-                          }}
+                          style={{ ...buttonStyle, padding: '7px 9px', marginRight: 5 }}
                           onClick={() => viewInvoice(inv)}
                         >
                           View
                         </button>
                         <button
                           type="button"
-                          style={{
-                            ...buttonStyle,
-                            padding: '7px 9px',
-                            background: '#059669',
-                          }}
+                          style={{ ...buttonStyle, padding: '7px 9px', background: '#059669' }}
                           onClick={async () => {
-                            const printWindow = window.open(
-                              '',
-                              '_blank',
-                              'width=900,height=700'
-                            );
+                            const printWindow = window.open('', '_blank', 'width=900,height=700');
                             if (!printWindow) {
                               setError('Please allow pop-ups in your browser.');
                               return;
@@ -2460,11 +2250,10 @@ export default function App() {
                 </tbody>
               </table>
               {filteredInvoices.length === 0 && (
-                <p style={{ color: '#6b7280' }}>
-                  No invoices found for these filters.
-                </p>
+                <p style={{ color: '#6b7280' }}>No invoices found for these filters.</p>
               )}
             </div>
+
             {selectedInvoice && (
               <section
                 style={{
@@ -2496,32 +2285,20 @@ export default function App() {
                 <p>
                   <strong>Customer:</strong>{' '}
                   {selectedInvoice.customers?.name ||
-                    customers.find((c) => c.id === selectedInvoice.customer_id)
-                      ?.name ||
+                    customers.find((c) => c.id === selectedInvoice.customer_id)?.name ||
                     'Customer'}
                 </p>
                 <p>
                   <strong>Date:</strong> {selectedInvoice.invoice_date} |{' '}
                   <strong>Time:</strong>{' '}
-                  {new Date(selectedInvoice.sale_time).toLocaleTimeString(
-                    'en-IN'
-                  )}
+                  {new Date(selectedInvoice.sale_time).toLocaleTimeString('en-IN')}
                 </p>
                 <div style={{ overflowX: 'auto' }}>
                   <table style={{ width: '100%', borderCollapse: 'collapse' }}>
                     <thead>
                       <tr style={{ background: '#f3f4f6' }}>
-                        {[
-                          'Product',
-                          'Qty',
-                          'Rate',
-                          'GST %',
-                          'GST Amount',
-                          'Total',
-                        ].map((h) => (
-                          <th key={h} style={cellStyle}>
-                            {h}
-                          </th>
+                        {['Product', 'Qty', 'Rate', 'GST %', 'GST Amount', 'Total'].map((h) => (
+                          <th key={h} style={cellStyle}>{h}</th>
                         ))}
                       </tr>
                     </thead>
