@@ -159,7 +159,6 @@ export default function App() {
   const [newPassword, setNewPassword] = useState('');
   
   // Multi-time password change state inside profile
-  const [currentPasswordInput, setCurrentPasswordInput] = useState('');
   const [updatePasswordInput, setUpdatePasswordInput] = useState('');
 
   const [business, setBusiness] = useState<Business | null>(null);
@@ -433,7 +432,6 @@ export default function App() {
       });
       if (error) setError('Login failed: ' + error.message);
     } else if (authMode === 'forgot') {
-      // Send 6-digit OTP to email
       const { error } = await supabase.auth.signInWithOtp({
         email: authEmail,
         options: {
@@ -447,7 +445,6 @@ export default function App() {
         setAuthMode('verify-otp');
       }
     } else if (authMode === 'verify-otp') {
-      // Verify 6-digit OTP and set new password
       if (otpCode.length !== 6) {
         setError('Please enter a valid 6-digit OTP.');
         setLoading(false);
@@ -461,7 +458,6 @@ export default function App() {
       if (verifyError) {
         setError('Invalid or expired OTP: ' + verifyError.message);
       } else {
-        // Once verified, update password
         const { error: updateError } = await supabase.auth.updateUser({
           password: newPassword,
         });
@@ -478,7 +474,7 @@ export default function App() {
     setLoading(false);
   }
 
-  // Multi-time password change function inside logged-in dashboard/profile
+  // Multi-time password change function inside logged-in profile
   async function handleChangePassword(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
     if (!updatePasswordInput || updatePasswordInput.length < 6) {
