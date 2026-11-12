@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import type { FormEvent, CSSProperties } from 'react';
 import { supabase } from './supabase';
-
 type Business = {
   id: string;
   owner_id?: string;
@@ -13,7 +12,6 @@ type Business = {
   logo_url?: string | null;
   letterhead_url?: string | null;
 };
-
 type Customer = {
   id: string;
   business_id: string;
@@ -24,7 +22,6 @@ type Customer = {
   gstin: string | null;
   created_at: string;
 };
-
 type Product = {
   id: string;
   business_id: string;
@@ -37,7 +34,6 @@ type Product = {
   stock: number;
   created_at: string;
 };
-
 type InvoiceItem = {
   id: string;
   product_id: string | null;
@@ -48,7 +44,6 @@ type InvoiceItem = {
   gst_amount: number;
   amount: number;
 };
-
 type Invoice = {
   id: string;
   business_id: string;
@@ -64,12 +59,10 @@ type Invoice = {
   created_at: string;
   customers?: { name: string; phone: string | null } | null;
 };
-
 type CartLine = {
   product_id: string;
   quantity: string;
 };
-
 const inputStyle: CSSProperties = {
   width: '100%',
   padding: '10px 12px',
@@ -80,7 +73,6 @@ const inputStyle: CSSProperties = {
   background: '#fff',
   color: '#111827',
 };
-
 const labelStyle: CSSProperties = {
   display: 'block',
   marginBottom: 6,
@@ -88,7 +80,6 @@ const labelStyle: CSSProperties = {
   fontWeight: 600,
   color: '#374151',
 };
-
 const buttonStyle: CSSProperties = {
   padding: '10px 14px',
   border: 'none',
@@ -98,7 +89,6 @@ const buttonStyle: CSSProperties = {
   fontWeight: 600,
   cursor: 'pointer',
 };
-
 const panelStyle: CSSProperties = {
   background: '#fff',
   padding: 22,
@@ -106,13 +96,11 @@ const panelStyle: CSSProperties = {
   border: '1px solid #e5e7eb',
   marginBottom: 20,
 };
-
 const cellStyle: CSSProperties = {
   padding: 10,
   borderBottom: '1px solid #e5e7eb',
   textAlign: 'left',
 };
-
 const emptyProduct = {
   name: '',
   sku: '',
@@ -122,7 +110,6 @@ const emptyProduct = {
   gst_rate: '18',
   stock: '0',
 };
-
 const emptyCustomer = {
   name: '',
   phone: '',
@@ -130,23 +117,19 @@ const emptyCustomer = {
   address: '',
   gstin: '',
 };
-
 const today = () => {
   const d = new Date();
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(
     d.getDate()
   ).padStart(2, '0')}`;
 };
-
 const money = (value: number) =>
   new Intl.NumberFormat('en-IN', {
     style: 'currency',
     currency: 'INR',
     maximumFractionDigits: 2,
   }).format(Number(value || 0));
-
 const safeNumber = (value: unknown) => Number(value || 0);
-
 export default function App() {
   const [user, setUser] = useState<any>(null);
   const [authLoading, setAuthLoading] = useState(true);
@@ -157,10 +140,16 @@ export default function App() {
   const [authPassword, setAuthPassword] = useState('');
   const [otpCode, setOtpCode] = useState('');
   const [newPassword, setNewPassword] = useState('');
+  const [confirmNewPassword, setConfirmNewPassword] = useState('');
+  
+  // Password Visibility States
+  const [showLoginPassword, setShowLoginPassword] = useState(false);
+  const [showOtpNewPassword, setShowOtpNewPassword] = useState(false);
+  const [showProfilePassword, setShowProfilePassword] = useState(false);
   
   // Multi-time password change state inside profile
   const [updatePasswordInput, setUpdatePasswordInput] = useState('');
-
+  const [updateConfirmPasswordInput, setUpdateConfirmPasswordInput] = useState('');
   const [business, setBusiness] = useState<Business | null>(null);
   const [profile, setProfile] = useState({
     company_name: '',
@@ -171,7 +160,6 @@ export default function App() {
     logo_url: '',
     letterhead_url: '',
   });
-
   const [products, setProducts] = useState<Product[]>([]);
   const [customers, setCustomers] = useState<Customer[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -197,7 +185,6 @@ export default function App() {
   const [loading, setLoading] = useState(false);
   const [message, setMessage] = useState('');
   const [error, setError] = useState('');
-
   useEffect(() => {
     supabase.auth.getSession().then(({ data, error }) => {
       if (error) setError(error.message);
@@ -212,7 +199,6 @@ export default function App() {
     });
     return () => subscription.unsubscribe();
   }, []);
-
   useEffect(() => {
     if (user) {
       void loadBusiness(user.id);
@@ -224,7 +210,6 @@ export default function App() {
       setInvoiceItems([]);
     }
   }, [user]);
-
   async function loadBusiness(userId: string) {
     setLoading(true);
     setError('');
@@ -272,7 +257,6 @@ export default function App() {
     }
     setLoading(false);
   }
-
   async function loadProducts(businessId: string) {
     const { data, error } = await supabase
       .from('products')
@@ -285,7 +269,6 @@ export default function App() {
     }
     setProducts((data ?? []) as Product[]);
   }
-
   async function loadCustomers(businessId: string) {
     const { data, error } = await supabase
       .from('customers')
@@ -298,7 +281,6 @@ export default function App() {
     }
     setCustomers((data ?? []) as Customer[]);
   }
-
   async function loadInvoices(businessId: string) {
     const { data, error } = await supabase
       .from('invoices')
@@ -311,7 +293,6 @@ export default function App() {
     }
     setInvoices((data ?? []) as Invoice[]);
   }
-
   async function loadInvoiceItems(invoiceId: string) {
     const { data, error } = await supabase
       .from('invoice_items')
@@ -323,12 +304,10 @@ export default function App() {
     }
     return (data ?? []) as InvoiceItem[];
   }
-
   function resetCustomerForm() {
     setCustomerForm(emptyCustomer);
     setEditingCustomerId(null);
   }
-
   async function saveCustomer(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!business) {
@@ -373,7 +352,6 @@ export default function App() {
     }
     setLoading(false);
   }
-
   function editCustomer(customer: Customer) {
     setCustomerForm({
       name: customer.name ?? '',
@@ -385,7 +363,6 @@ export default function App() {
     setEditingCustomerId(customer.id);
     setActiveTab('customers');
   }
-
   async function deleteCustomer(customer: Customer) {
     if (!business) return;
     if (!window.confirm(`Are you sure you want to delete "${customer.name}"?`))
@@ -407,14 +384,12 @@ export default function App() {
     }
     setLoading(false);
   }
-
   // Auth & OTP Handlers
   async function handleAuth(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     setLoading(true);
     setError('');
     setMessage('');
-
     if (authMode === 'signup') {
       const { error } = await supabase.auth.signUp({
         email: authEmail,
@@ -450,6 +425,11 @@ export default function App() {
         setLoading(false);
         return;
       }
+      if (newPassword !== confirmNewPassword) {
+        setError('New password and Confirm password do not match.');
+        setLoading(false);
+        return;
+      }
       const { error: verifyError } = await supabase.auth.verifyOtp({
         email: authEmail,
         token: otpCode,
@@ -468,12 +448,12 @@ export default function App() {
           setAuthMode('login');
           setOtpCode('');
           setNewPassword('');
+          setConfirmNewPassword('');
         }
       }
     }
     setLoading(false);
   }
-
   // Multi-time password change function inside logged-in profile
   async function handleChangePassword(e: FormEvent<HTMLFormElement>) {
     e.preventDefault();
@@ -481,23 +461,25 @@ export default function App() {
       setError('New password must be at least 6 characters.');
       return;
     }
+    if (updatePasswordInput !== updateConfirmPasswordInput) {
+      setError('New password and Confirm password do not match.');
+      return;
+    }
     setLoading(true);
     setError('');
     setMessage('');
-
     const { error } = await supabase.auth.updateUser({
       password: updatePasswordInput,
     });
-
     if (error) {
       setError('Failed to change password: ' + error.message);
     } else {
       setMessage('Password changed successfully! ✅');
       setUpdatePasswordInput('');
+      setUpdateConfirmPasswordInput('');
     }
     setLoading(false);
   }
-
   async function saveProfile(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!user) return;
@@ -536,12 +518,10 @@ export default function App() {
     }
     setLoading(false);
   }
-
   function resetProductForm() {
     setProductForm(emptyProduct);
     setEditingId(null);
   }
-
   async function saveProduct(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!business) {
@@ -603,7 +583,6 @@ export default function App() {
     }
     setLoading(false);
   }
-
   function editProduct(product: Product) {
     setProductForm({
       name: product.name ?? '',
@@ -617,7 +596,6 @@ export default function App() {
     setEditingId(product.id);
     setActiveTab('products');
   }
-
   async function deleteProduct(product: Product) {
     if (!business) return;
     if (!window.confirm(`Are you sure you want to delete "${product.name}"?`))
@@ -639,17 +617,14 @@ export default function App() {
     }
     setLoading(false);
   }
-
   function updateCart(index: number, field: keyof CartLine, value: string) {
     setCart((old) =>
       old.map((line, i) => (i === index ? { ...line, [field]: value } : line))
     );
   }
-
   function addCartLine() {
     setCart((old) => [...old, { product_id: '', quantity: '1' }]);
   }
-
   function removeCartLine(index: number) {
     setCart((old) =>
       old.length <= 1
@@ -657,7 +632,6 @@ export default function App() {
         : old.filter((_, i) => i !== index)
     );
   }
-
   const cartTotals = useMemo(() => {
     let subtotal = 0;
     let tax = 0;
@@ -689,7 +663,6 @@ export default function App() {
       total: Math.round((subtotal + tax) * 100) / 100,
     };
   }, [cart, products]);
-
   async function createInvoice(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!business) {
@@ -765,12 +738,10 @@ export default function App() {
     }
     setLoading(false);
   }
-
   async function viewInvoice(invoice: Invoice) {
     setSelectedInvoice(invoice);
     setInvoiceItems(await loadInvoiceItems(invoice.id));
   }
-
   function printInvoice(
     invoice: Invoice,
     items: InvoiceItem[],
@@ -809,7 +780,6 @@ export default function App() {
           </tr>`
       )
       .join('');
-
     let themeStyles = '';
     let headerLayout = '';
     if (selectedTheme === 'classic') {
@@ -933,11 +903,9 @@ export default function App() {
         </div>
       `;
     }
-
     const letterheadBg = business.letterhead_url
       ? `background-image: url('${business.letterhead_url}'); background-size: cover; background-position: center; background-repeat: no-repeat;`
       : '';
-
     const invoiceHtml = `
       <!doctype html>
       <html>
@@ -1011,7 +979,6 @@ export default function App() {
     printWindow.document.write(invoiceHtml);
     printWindow.document.close();
   }
-
   function escapeHtml(value: string) {
     return value.replace(/[&<>"']/g, (char) => {
       const entities: Record<string, string> = {
@@ -1024,7 +991,6 @@ export default function App() {
       return entities[char];
     });
   }
-
   async function uploadCompanyFile(file: File, type: 'logo' | 'letterhead') {
     if (!business) {
       setError('Please save your company profile first.');
@@ -1069,7 +1035,6 @@ export default function App() {
         : 'Letterhead image uploaded successfully! ✅'
     );
   }
-
   async function logout() {
     const { error } = await supabase.auth.signOut();
     if (error) {
@@ -1084,7 +1049,6 @@ export default function App() {
       setError('');
     }
   }
-
   const filteredProducts = products.filter((product) => {
     const term = search.toLowerCase().trim();
     return (
@@ -1092,7 +1056,6 @@ export default function App() {
       (product.sku ?? '').toLowerCase().includes(term)
     );
   });
-
   const filteredCustomers = customers.filter((customer) => {
     const term = customerSearch.toLowerCase().trim();
     return (
@@ -1101,7 +1064,6 @@ export default function App() {
       (customer.email ?? '').toLowerCase().includes(term)
     );
   });
-
   const filteredInvoices = invoices.filter((invoice) => {
     const term = invoiceSearch.toLowerCase().trim();
     const customerName = invoice.customers?.name ?? '';
@@ -1112,7 +1074,6 @@ export default function App() {
     const matchesTo = !historyTo || invoice.invoice_date <= historyTo;
     return matchesSearch && matchesFrom && matchesTo;
   });
-
   const totalStock = products.reduce(
     (total, product) => total + safeNumber(product.stock),
     0
@@ -1122,11 +1083,9 @@ export default function App() {
       total + safeNumber(product.stock) * safeNumber(product.purchase_price),
     0
   );
-
   if (authLoading) {
     return <div style={{ padding: 40, textAlign: 'center' }}>Loading Invoxa...</div>;
   }
-
   if (!user) {
     return (
       <main
@@ -1160,7 +1119,6 @@ export default function App() {
             {authMode === 'forgot' && 'Forgot Password'}
             {authMode === 'verify-otp' && 'Verify 6-Digit OTP'}
           </h2>
-
           {(authMode === 'login' || authMode === 'signup' || authMode === 'forgot') && (
             <>
               <label style={labelStyle}>Email Address</label>
@@ -1174,22 +1132,39 @@ export default function App() {
               />
             </>
           )}
-
           {(authMode === 'login' || authMode === 'signup') && (
             <>
               <label style={labelStyle}>Password</label>
-              <input
-                style={{ ...inputStyle, marginBottom: 18 }}
-                type="password"
-                required
-                minLength={6}
-                value={authPassword}
-                onChange={(e) => setAuthPassword(e.target.value)}
-                placeholder="At least 6 characters"
-              />
+              <div style={{ position: 'relative', marginBottom: 18 }}>
+                <input
+                  style={{ ...inputStyle, paddingRight: 45 }}
+                  type={showLoginPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={authPassword}
+                  onChange={(e) => setAuthPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowLoginPassword(!showLoginPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: 12,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    color: '#4b5563',
+                  }}
+                >
+                  {showLoginPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
             </>
           )}
-
           {authMode === 'verify-otp' && (
             <>
               <p style={{ fontSize: 13, color: '#4b5563', marginBottom: 12 }}>
@@ -1206,21 +1181,49 @@ export default function App() {
                 placeholder="123456"
               />
               <label style={labelStyle}>New Password</label>
+              <div style={{ position: 'relative', marginBottom: 16 }}>
+                <input
+                  style={{ ...inputStyle, paddingRight: 45 }}
+                  type={showOtpNewPassword ? 'text' : 'password'}
+                  required
+                  minLength={6}
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="At least 6 characters"
+                />
+                <button
+                  type="button"
+                  onClick={() => setShowOtpNewPassword(!showOtpNewPassword)}
+                  style={{
+                    position: 'absolute',
+                    right: 12,
+                    top: '50%',
+                    transform: 'translateY(-50%)',
+                    background: 'none',
+                    border: 'none',
+                    cursor: 'pointer',
+                    fontSize: 14,
+                    color: '#4b5563',
+                  }}
+                >
+                  {showOtpNewPassword ? 'Hide' : 'Show'}
+                </button>
+              </div>
+
+              <label style={labelStyle}>Confirm New Password</label>
               <input
                 style={{ ...inputStyle, marginBottom: 18 }}
                 type="password"
                 required
                 minLength={6}
-                value={newPassword}
-                onChange={(e) => setNewPassword(e.target.value)}
-                placeholder="At least 6 characters"
+                value={confirmNewPassword}
+                onChange={(e) => setConfirmNewPassword(e.target.value)}
+                placeholder="Re-enter new password"
               />
             </>
           )}
-
           {error && <p style={{ color: '#dc2626', fontSize: 13, marginBottom: 10 }}>{error}</p>}
           {message && <p style={{ color: '#15803d', fontSize: 13, marginBottom: 10 }}>{message}</p>}
-
           <button style={{ ...buttonStyle, width: '100%' }} disabled={loading}>
             {loading
               ? 'Please wait...'
@@ -1232,7 +1235,6 @@ export default function App() {
               ? 'Send 6-Digit OTP'
               : 'Verify & Reset Password'}
           </button>
-
           <div style={{ marginTop: 16, textAlign: 'center', fontSize: 14 }}>
             {authMode === 'login' && (
               <>
@@ -1265,7 +1267,6 @@ export default function App() {
                 </p>
               </>
             )}
-
             {authMode === 'signup' && (
               <p>
                 Already have an account?{' '}
@@ -1282,7 +1283,6 @@ export default function App() {
                 </button>
               </p>
             )}
-
             {(authMode === 'forgot' || authMode === 'verify-otp') && (
               <p>
                 Back to{' '}
@@ -1304,7 +1304,6 @@ export default function App() {
       </main>
     );
   }
-
   const tabs = [
     ['dashboard', 'Dashboard'],
     ['products', 'Products & Inventory'],
@@ -1313,7 +1312,6 @@ export default function App() {
     ['invoice', 'Sales Invoice'],
     ['history', 'Sales History'],
   ] as const;
-
   return (
     <div
       style={{
@@ -1364,7 +1362,6 @@ export default function App() {
           </button>
         </div>
       </header>
-
       <main style={{ maxWidth: 1200, margin: '0 auto', padding: '24px 4%' }}>
         {activeTab === 'dashboard' && (
           <section>
@@ -1402,7 +1399,6 @@ export default function App() {
                 </div>
               ))}
             </div>
-
             <section style={panelStyle}>
               <h3>Recent Sales</h3>
               {invoices.length === 0 ? (
@@ -1442,7 +1438,6 @@ export default function App() {
             </section>
           </section>
         )}
-
         {activeTab === 'profile' && (
           <div>
             <section style={panelStyle}>
@@ -1514,7 +1509,6 @@ export default function App() {
                   Save Company Profile
                 </button>
               </form>
-
               {business && (
                 <div style={{ marginTop: 30, borderTop: '1px solid #e5e7eb', paddingTop: 20 }}>
                   <h3>Upload Logo & Letterhead from Gallery</h3>
@@ -1566,21 +1560,51 @@ export default function App() {
                 </div>
               )}
             </section>
-
             {/* Multi-time password change section */}
             <section style={panelStyle}>
               <h2 style={{ marginTop: 0 }}>Security: Change Password Anytime</h2>
               <form onSubmit={handleChangePassword} style={{ maxWidth: 400 }}>
                 <label style={labelStyle}>New Password (At least 6 characters)</label>
+                <div style={{ position: 'relative', marginBottom: 16 }}>
+                  <input
+                    style={{ ...inputStyle, paddingRight: 45 }}
+                    type={showProfilePassword ? 'text' : 'password'}
+                    required
+                    minLength={6}
+                    value={updatePasswordInput}
+                    onChange={(e) => setUpdatePasswordInput(e.target.value)}
+                    placeholder="Enter new password"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowProfilePassword(!showProfilePassword)}
+                    style={{
+                      position: 'absolute',
+                      right: 12,
+                      top: '50%',
+                      transform: 'translateY(-50%)',
+                      background: 'none',
+                      border: 'none',
+                      cursor: 'pointer',
+                      fontSize: 14,
+                      color: '#4b5563',
+                    }}
+                  >
+                    {showProfilePassword ? 'Hide' : 'Show'}
+                  </button>
+                </div>
+
+                <label style={labelStyle}>Confirm New Password</label>
                 <input
                   style={{ ...inputStyle, marginBottom: 16 }}
                   type="password"
                   required
                   minLength={6}
-                  value={updatePasswordInput}
-                  onChange={(e) => setUpdatePasswordInput(e.target.value)}
-                  placeholder="Enter new password"
+                  value={updateConfirmPasswordInput}
+                  onChange={(e) => setUpdateConfirmPasswordInput(e.target.value)}
+                  placeholder="Re-enter new password"
                 />
+
                 <button style={buttonStyle} disabled={loading}>
                   {loading ? 'Updating...' : 'Change Password'}
                 </button>
@@ -1588,7 +1612,6 @@ export default function App() {
             </section>
           </div>
         )}
-
         {activeTab === 'customers' && (
           <section style={panelStyle}>
             <h2 style={{ marginTop: 0 }}>
@@ -1659,7 +1682,6 @@ export default function App() {
                     )}
                   </div>
                 </form>
-
                 <h3 style={{ marginTop: 28 }}>Customer List ({customers.length})</h3>
                 <input
                   style={{ ...inputStyle, maxWidth: 420, marginBottom: 16 }}
@@ -1710,7 +1732,6 @@ export default function App() {
             )}
           </section>
         )}
-
         {activeTab === 'products' && (
           <>
             {!business ? (
@@ -1744,7 +1765,6 @@ export default function App() {
                     </div>
                   ))}
                 </div>
-
                 <section style={panelStyle}>
                   <h3>{editingId ? 'Edit Product' : 'Add New Product'}</h3>
                   <form onSubmit={saveProduct}>
@@ -1867,7 +1887,6 @@ export default function App() {
                     </div>
                   </form>
                 </section>
-
                 <section style={panelStyle}>
                   <h3>Product List</h3>
                   <input
@@ -1931,7 +1950,6 @@ export default function App() {
             )}
           </>
         )}
-
         {activeTab === 'invoice' && (
           <section style={panelStyle}>
             <h2 style={{ marginTop: 0 }}>Create Sales Invoice</h2>
@@ -1974,7 +1992,6 @@ export default function App() {
                     <input style={inputStyle} value="Auto-generated when saved" readOnly />
                   </div>
                 </div>
-
                 <div style={{ marginTop: 20, maxWidth: 300 }}>
                   <label style={labelStyle}>Billing Theme / Template</label>
                   <select
@@ -1988,7 +2005,6 @@ export default function App() {
                     <option value="corporate">Corporate (Professional Dark)</option>
                   </select>
                 </div>
-
                 <h3 style={{ marginTop: 28 }}>Products</h3>
                 {cart.map((line, index) => {
                   const p = products.find((product) => product.id === line.product_id);
@@ -2076,7 +2092,6 @@ export default function App() {
                 >
                   + Add Another Product
                 </button>
-
                 <div
                   style={{
                     maxWidth: 360,
@@ -2108,7 +2123,6 @@ export default function App() {
                     <strong>{money(cartTotals.total)}</strong>
                   </div>
                 </div>
-
                 <button
                   type="submit"
                   style={{ ...buttonStyle, marginTop: 22, padding: '12px 20px' }}
@@ -2120,7 +2134,6 @@ export default function App() {
             )}
           </section>
         )}
-
         {activeTab === 'history' && (
           <section style={panelStyle}>
             <h2 style={{ marginTop: 0 }}>Sales History</h2>
@@ -2160,7 +2173,6 @@ export default function App() {
                 />
               </div>
             </div>
-
             <div style={{ marginBottom: 18, maxWidth: 300 }}>
               <label style={labelStyle}>Select Print Theme</label>
               <select
@@ -2174,7 +2186,6 @@ export default function App() {
                 <option value="corporate">Corporate (Professional Dark)</option>
               </select>
             </div>
-
             <div style={{ display: 'flex', gap: 10, flexWrap: 'wrap', marginBottom: 18 }}>
               <button style={buttonStyle} onClick={() => business && loadInvoices(business.id)}>
                 Refresh History
@@ -2193,7 +2204,6 @@ export default function App() {
                 + New Invoice
               </button>
             </div>
-
             <div style={{ overflowX: 'auto' }}>
               <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 13, minWidth: 750 }}>
                 <thead>
@@ -2249,7 +2259,6 @@ export default function App() {
                 <p style={{ color: '#6b7280' }}>No invoices found for these filters.</p>
               )}
             </div>
-
             {selectedInvoice && (
               <section
                 style={{
