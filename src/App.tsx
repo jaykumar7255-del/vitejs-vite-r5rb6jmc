@@ -785,7 +785,7 @@ export default function App() {
     if (selectedTheme === 'classic') {
       themeStyles = `
         body { font-family: 'Times New Roman', Times, serif; color: #000; padding: 25px; background: #fff; }
-        .invoice-box { border: 2px solid #333; padding: 20px; }
+        .invoice-box { border: 2px solid #333; padding: 20px; background: rgba(255, 255, 255, 0.92); }
         th { background: #333; color: #fff; border: 1px solid #333; padding: 8px; }
         td { border: 1px solid #ccc; }
       `;
@@ -814,7 +814,7 @@ export default function App() {
     } else if (selectedTheme === 'modern') {
       themeStyles = `
         body { font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; color: #1f2937; padding: 30px; background: #f8fafc; }
-        .invoice-box { background: #fff; padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
+        .invoice-box { background: rgba(255, 255, 255, 0.95); padding: 30px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.05); }
         th { background: #2563eb; color: #fff; padding: 12px; }
         td { border-bottom: 1px solid #e2e8f0; }
       `;
@@ -853,7 +853,7 @@ export default function App() {
     } else if (selectedTheme === 'minimal') {
       themeStyles = `
         body { font-family: Arial, sans-serif; color: #111; padding: 30px; background: #fff; }
-        .invoice-box { padding: 10px; }
+        .invoice-box { padding: 10px; background: rgba(255, 255, 255, 0.95); }
         th { background: #f3f4f6; color: #111; border-bottom: 2px solid #111; padding: 10px; }
         td { border-bottom: 1px solid #e5e7eb; }
       `;
@@ -875,7 +875,7 @@ export default function App() {
     } else {
       themeStyles = `
         body { font-family: 'Helvetica Neue', Helvetica, Arial, sans-serif; color: #333; padding: 30px; background: #fff; }
-        .invoice-box { background: #fff; border-top: 6px solid #0f172a; padding: 25px; }
+        .invoice-box { background: rgba(255, 255, 255, 0.95); border-top: 6px solid #0f172a; padding: 25px; }
         th { background: #0f172a; color: #fff; padding: 10px; }
         td { border-bottom: 1px solid #cbd5e1; }
       `;
@@ -904,7 +904,7 @@ export default function App() {
       `;
     }
     const letterheadBg = business.letterhead_url
-      ? `background-image: url('${business.letterhead_url}'); background-size: cover; background-position: center; background-repeat: no-repeat;`
+      ? `background-image: url('${business.letterhead_url}'); background-size: cover; background-position: center; background-repeat: no-repeat; -webkit-print-color-adjust: exact; print-color-adjust: exact;`
       : '';
     const invoiceHtml = `
       <!doctype html>
@@ -1084,7 +1084,7 @@ export default function App() {
     0
   );
   if (authLoading) {
-    return <div style={{ padding: 40, textAlign: 'center' }}>Loading Invoxa...</div>;
+    return <div style={{ padding: 40, textAlign: 'center' }}>Loading Billvoxa...</div>;
   }
   if (!user) {
     return (
@@ -1110,8 +1110,10 @@ export default function App() {
             boxSizing: 'border-box',
           }}
         >
-          <h1 style={{ marginTop: 0, color: '#1d4ed8' }}>Invoxa</h1>
-          <p style={{ color: '#6b7280' }}>Billing & Inventory Management</p>
+          <div style={{ textAlign: 'center', marginBottom: 20 }}>
+            <img src="/logo.png" alt="Billvoxa" style={{ height: 46, objectFit: 'contain', background: '#000', padding: '6px 12px', borderRadius: 8 }} />
+            <p style={{ color: '#6b7280', fontSize: 13, marginTop: 8 }}>Billing & Inventory Management</p>
+          </div>
           
           <h2>
             {authMode === 'login' && 'Login'}
@@ -1209,7 +1211,6 @@ export default function App() {
                   {showOtpNewPassword ? 'Hide' : 'Show'}
                 </button>
               </div>
-
               <label style={labelStyle}>Confirm New Password</label>
               <input
                 style={{ ...inputStyle, marginBottom: 18 }}
@@ -1333,8 +1334,8 @@ export default function App() {
           flexWrap: 'wrap',
         }}
       >
-        <div>
-          <h1 style={{ margin: 0, color: '#1d4ed8' }}>Invoxa</h1>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 14 }}>
+          <img src="/logo.png" alt="Billvoxa Logo" style={{ height: 36, objectFit: 'contain', background: '#000', padding: '4px 8px', borderRadius: 6 }} />
           <span style={{ color: '#6b7280', fontSize: 13 }}>
             {business?.company_name || 'Set Up Your Company Profile'}
           </span>
@@ -1593,7 +1594,6 @@ export default function App() {
                     {showProfilePassword ? 'Hide' : 'Show'}
                   </button>
                 </div>
-
                 <label style={labelStyle}>Confirm New Password</label>
                 <input
                   style={{ ...inputStyle, marginBottom: 16 }}
@@ -1604,7 +1604,6 @@ export default function App() {
                   onChange={(e) => setUpdateConfirmPasswordInput(e.target.value)}
                   placeholder="Re-enter new password"
                 />
-
                 <button style={buttonStyle} disabled={loading}>
                   {loading ? 'Updating...' : 'Change Password'}
                 </button>
